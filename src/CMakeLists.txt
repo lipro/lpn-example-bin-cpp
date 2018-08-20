@@ -29,3 +29,9 @@ install (
 	TARGETS		lpn_example_cpp
 	DESTINATION	${CMAKE_INSTALL_BINDIR}
 )
+
+# add the simple execution test
+add_test (
+	NAME execute_lpn_example_cpp
+	COMMAND lpn_example_cpp
+)

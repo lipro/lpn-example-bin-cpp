@@ -10,5 +10,8 @@ include (GNUInstallDirs)
 # ${PROJECT_NAME}.
 project (lpn-example-bin CXX)
 
+# Enable CTest environment
+enable_testing()
+
 # Add the example source directory.
 add_subdirectory (src)
