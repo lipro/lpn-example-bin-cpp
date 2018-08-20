@@ -1,0 +1,105 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+
+#==========================================================#
+
+do_zypper_upgrade() {
+    local ARGS="$@"
+    cat << :EOF
+zypper -q -n refresh -f && \
+zypper -q -n update -l && \
+zypper -q -n dist-upgrade -l
+:EOF
+    return $?
+}
+
+do_zypper_install() {
+    local RPM="$1"; [ -n "${RPM}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+zypper -q -n install -l -t package '${RPM}'
+:EOF
+    return $?
+}
+
+do_zypper_patterninfo() {
+    local PAT="$1"; [ -n "${PAT}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+zypper -n info -t pattern '${PAT}'
+:EOF
+    return $?
+}
+
+do_zypper_patterninstall() {
+    local PAT="$1"; [ -n "${PAT}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+zypper -q -n install -l -t pattern '${PAT}'
+:EOF
+    return $?
+}
+
+do_zypper_info() {
+    local ARGS="$@"
+    cat << :EOF
+lsb_release -a && echo "Architecture:	\$(echo not-yet)" && \
+zypper -n repos -prand -N && \
+zypper -n products && \
+zypper -n patterns
+:EOF
+    return $?
+}
+
+#==========================================================#
+
+zypper_osupgrade() {
+    local ARGS="$@"
+    cat << :EOF
+$(do_zypper_upgrade) && \
+$(do_zypper_install "lsb-release")
+:EOF
+    return $?
+}
+
+zypper_osmetainfo() {
+    local ARGS="$@"
+    cat << :EOF
+$(do_zypper_info)
+:EOF
+    return $?
+}
+
+# TODO: zypper add repository not implemented
+zypper_addrepo() {
+    local REPO="$1"; [ -n "${REPO}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+echo "zypper_addrepo(): not yet implemented, REPO='${REPO}', ARGS='${ARGS}'"
+:EOF
+    return $?
+}
+
+zypper_instpkg() {
+    local PKG="$1"; [ -n "${PKG}" ] && shift
+    local ARGS="$@"
+    case "${PKG}" in
+      pat:*)
+        PAT="${PKG#pat:}"
+        PAT="${PAT//-/ }"
+        cat << :EOF
+$(do_zypper_patterninfo "${PAT}") && \
+$(do_zypper_patterninstall "${PAT}")
+:EOF
+        ;;
+      *)
+        cat << :EOF
+$(do_zypper_install "${PKG}")
+:EOF
+        ;;
+    esac
+    return $?
+}

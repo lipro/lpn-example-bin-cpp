@@ -1,0 +1,39 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+source "$(dirname $0)/shlib/setup"
+source "$(dirname $0)/shlib/cli"
+
+#==========================================================#
+
+osx_name() {
+    local ARGS="$@"
+    echo -en "OSX"
+    return $?
+}
+
+osx_entryif() {
+    local ARGS="$@"
+    echo -en "cli"
+    return $?
+}
+
+#==========================================================#
+
+osx_validate() {
+    local ARGS="$@"
+    local HOSTOS="$(cfg_get_setup_os_name)"
+    if [ "${HOSTOS:0:3}" != "osx" ]; then
+        echo "ERROR: invalid $(osx_name) host OS declaration: ${HOSTOS}"
+        false
+    fi
+    return $?
+}
+
+osx_before_install() {
+    local ARGS="$@"
+    true
+    return $?
+}

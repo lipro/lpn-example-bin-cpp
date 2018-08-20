@@ -1,0 +1,90 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+
+#==========================================================#
+
+do_brew_add_tap_repository() {
+    local TAP="$1"; [ -n "${TAP}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+brew tap '${TAP}'
+:EOF
+    return $?
+}
+
+do_brew_upgrade() {
+    local ARGS="$@"
+    cat << :EOF
+brew update && \
+brew upgrade
+:EOF
+    return $?
+}
+
+do_brew_install() {
+    local FORMULA="$1"; [ -n "${FORMULA}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+brew install -f '${FORMULA}'
+:EOF
+    return $?
+}
+
+do_brew_info() {
+    local ARGS="$@"
+    cat << :EOF
+sw_vers && echo "Architecture:	\$(echo not-yet)" && \
+brew --version && \
+brew info && \
+brew list
+:EOF
+    return $?
+}
+
+#==========================================================#
+
+brew_osupgrade() {
+    local ARGS="$@"
+    cat << :EOF
+$(do_brew_upgrade)
+:EOF
+    return $?
+}
+
+brew_osmetainfo() {
+    local ARGS="$@"
+    cat << :EOF
+$(do_brew_info)
+:EOF
+    return $?
+}
+
+brew_addrepo() {
+    local REPO="$1"; [ -n "${REPO}" ] && shift
+    local ARGS="$@"
+    case "${REPO}" in
+      tap:*)
+        # OSX Homebrew Tapped Repository
+        cat << :EOF
+$(do_brew_add_tap_repository "${REPO#tap:}") && \
+$(do_brew_upgrade)
+:EOF
+        ;;
+      *)
+        # nothing more to do (not yet)
+        ;;
+    esac
+    return $?
+}
+
+brew_instpkg() {
+    local PKG="$1"; [ -n "${PKG}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+$(do_brew_install "${PKG}")
+:EOF
+    return $?
+}

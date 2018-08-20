@@ -1,0 +1,32 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+source "$(dirname $0)/shlib/dpkg"
+
+#==========================================================#
+
+debian_name() {
+    local ARGS="$@"
+    echo -en "Debian"
+    return $?
+}
+
+debian_pkgmgr() {
+    local ARGS="$@"
+    echo -en "dpkg"
+    return $?
+}
+
+#==========================================================#
+
+debian_validate() {
+    local ARGS="$@"
+    local IMAGEOS="$(cfg_get_setup_os_type)"
+    if [ "${IMAGEOS:0:6}" != "debian" ]; then
+        echo "ERROR: invalid $(debian_name) image OS declaration: ${IMAGEOS}"
+        false
+    fi
+    return $?
+}

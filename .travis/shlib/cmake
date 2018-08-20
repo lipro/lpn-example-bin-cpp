@@ -1,0 +1,67 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+source "$(dirname $0)/shlib/hostos"
+
+#==========================================================#
+
+cmake_run() {
+    local BIN="$1"; [ -n "${BIN}" ] && shift
+    local ACT="$1"; [ -n "${ACT}" ] && shift
+    local ARGS="$@"
+    # echo "travis_fold:start:$(basename ${BIN}).${ACT}"
+    case "${ACT}" in
+      "tool-version")
+        hostos "runner" "${BIN}" --version
+        ;;
+      "configure")
+        hostos "runner" "${BIN}" \
+            -H$(cfg_get_inner_source_dir) \
+            -B$(cfg_get_inner_build_dir)
+        ;;
+      "build")
+        hostos "runner" "${BIN}" \
+            --build "$(cfg_get_inner_build_dir)" \
+            --target all
+        ;;
+      "test")
+        hostos "runner" "${BIN}" \
+            --build "$(cfg_get_inner_build_dir)" \
+            --target test
+        ;;
+      "srcpkg")
+        hostos "runner" "${BIN}" \
+            --build "$(cfg_get_inner_build_dir)" \
+            --target package_source
+        ;;
+      "binpkg")
+        hostos "runner" "${BIN}" \
+            --build "$(cfg_get_inner_build_dir)" \
+            --target package
+        ;;
+      "install")
+        hostos "runner" "${BIN}" \
+            --build "$(cfg_get_inner_build_dir)" \
+            --target install \
+            -- DESTDIR=$(cfg_get_inner_sysroot_dir)
+        ;;
+      *)
+        echo "ERROR: invalid build action: ${ACT}"
+        false
+        ;;
+    esac
+    # TODO: respect return value $? before: echo "travis_fold:end:$(basename ${BIN}).${ACT}"
+    return $?
+}
+
+cmake_action() {
+    local BIN="$1"; [ -n "${BIN}" ] && shift
+    local ACTS="$@"
+    if [ -n "${ACTS}" ]; then
+        for ACT in ${ACTS}; do
+            cmake_run "${BIN}" "${ACT}"
+        done
+    fi
+}

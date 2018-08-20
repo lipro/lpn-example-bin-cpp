@@ -1,0 +1,137 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+
+#==========================================================#
+# https://gist.github.com/natefoo/814c5bf936922dad97ff
+#==========================================================#
+
+docker_before_install() {
+    local ARGS="$@"
+    local SETUP="$(cfg_get_setup_file)"
+    docker_add_line "$(docker_file_from)"
+    docker_add_line "$(docker_file_label)"
+    docker_add_line "$(docker_file_entrypoint)"
+    docker_add_line "$(docker_file_cmd)"
+    docker_add_line "$(docker_file_env)"
+    docker_add_line "$(docker_file_volume)"
+    docker_add_line "$(docker_file_copy)"
+    return $?
+}
+
+docker_build() {
+    local ARGS="$@"
+    docker build \
+        --tag $(cfg_get_docker_image) \
+        --rm $(cfg_get_setup_dir)
+    return $?
+}
+
+docker_run() {
+    local CMD="$1"; [ -n "${CMD}" ] && shift
+    local ARGS="$@"
+    docker run \
+        --tty --interactive \
+        --volume $(cfg_get_outer_source_dir):$(cfg_get_inner_source_dir) \
+        --volume $(cfg_get_outer_build_dir):$(cfg_get_inner_build_dir) \
+        --volume $(cfg_get_outer_sysroot_dir):$(cfg_get_inner_sysroot_dir) \
+        --volume $(cfg_get_outer_artifacts_dir):$(cfg_get_inner_artifacts_dir) \
+        --rm $(cfg_get_docker_image) ${CMD} ${ARGS}
+    return $?
+}
+
+#==========================================================#
+
+docker_add_line() {
+    local ARGS="$@"
+    local SETUP="$(cfg_get_setup_file)"
+    echo "${ARGS}" | tee -a "${SETUP}"
+    return $?
+}
+
+docker_add_runline() {
+    local ARGS="$@"
+    docker_add_line "RUN ${ARGS}"
+    return $?
+}
+
+#==========================================================#
+
+docker_file_label() {
+    local ARGS="$@"
+    cat << :EOF
+LABEL version="$(cfg_get_setup_os_vers)-$(cfg_get_build_number)-g$(cfg_get_build_commit)"
+LABEL maintainer="Stephan Linz <linz@li-pro.net>"
+LABEL description="Travis-CI build image '$(cfg_get_docker_image)' derived \
+from base image '$(cfg_get_docker_base_image)'."
+:EOF
+    return $?
+}
+
+docker_file_from() {
+    local ARGS="$@"
+    cat << :EOF
+FROM $(cfg_get_docker_base_image)
+:EOF
+    return $?
+}
+
+docker_file_entrypoint() {
+    local ARGS="$@"
+    cat << :EOF
+ENTRYPOINT $(cfg_get_setup_os_entrypoint)
+:EOF
+    return $?
+}
+
+docker_file_cmd() {
+    local ARGS="$@"
+    cat << :EOF
+CMD $(cfg_get_setup_os_cmd)
+:EOF
+    return $?
+}
+
+docker_file_env() {
+    local ARGS="$@"
+    cat << :EOF
+ENV container docker
+ENV BASH_ENV /etc/profile
+ENV ENV /etc/profile
+ENV PROMPT_COMMAND ". /etc/profile"
+ENV DEBIAN_FRONTEND ${DEBIAN_FRONTEND}
+ENV BUILD_NUMBER $(cfg_get_build_number)
+ENV COMMIT_SHA $(cfg_get_build_commit)
+:EOF
+    return $?
+}
+
+docker_file_volume() {
+    local ARGS="$@"
+    local VOLUMES="$(cfg_get_inner_source_dir) \
+                   $(cfg_get_inner_build_dir) \
+                   $(cfg_get_inner_sysroot_dir) \
+                   $(cfg_get_inner_artifacts_dir)"
+    for VOLUME in ${VOLUMES}; do
+        cat << :EOF
+VOLUME ${VOLUME}
+:EOF
+    done
+    return $?
+}
+
+docker_file_copy() {
+    local ARGS="$@"
+    local ROOTS="$(cfg_get_provision_root_reldir) \
+                 $(cfg_get_provision_os_root_reldir)"
+    for ROOT in ${ROOTS}; do
+        if [ -d $(cfg_get_setup_dir)/${ROOT} ]; then
+            cat << :EOF
+COPY ${ROOT}/ /
+:EOF
+        fi
+    done
+    return $?
+}

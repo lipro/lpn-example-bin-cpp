@@ -1,0 +1,102 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+source "$(dirname $0)/shlib/setup"
+source "$(dirname $0)/shlib/$(cfg_get_setup_os_name)"
+source "$(dirname $0)/shlib/$(cfg_get_setup_os_type)"
+
+#==========================================================#
+
+hostos() {
+    local OP="$1"; [ -n "${OP}" ] && shift
+    local ARGS="$@"
+    case "${OP}" in
+      "validate"|"runner"|"install"|"before_install"| \
+      "osupgrade"|"osmetainfo"|"addrepos"|"instpkgs")
+        hostos_${OP} ${ARGS}
+        ;;
+      *)
+        echo "ERROR: invalid or unknown $($(cfg_get_setup_os_name)_name) operation: ${OP}"
+        false
+        ;;
+    esac
+    return $?
+}
+
+#==========================================================#
+
+hostos_validate() {
+    local ARGS="$@"
+    $(cfg_get_setup_os_name)_validate
+    $(cfg_get_setup_os_type)_validate
+    return $?
+}
+
+hostos_runner() {
+    local CMD="$1"; [ -n "${CMD}" ] && shift
+    local ARGS="$@"
+    $($(cfg_get_setup_os_name)_entryif)_run ${CMD} ${ARGS}
+    return $?
+}
+
+hostos_install() {
+    local ARGS="$@"
+    $($(cfg_get_setup_os_name)_entryif)_build
+    return $?
+}
+
+hostos_before_install() {
+    local ARGS="$@"
+    setup "provision" "setup-file"
+    setup "provision" "build-dir"
+    setup "provision" "sysroot-dir"
+    setup "provision" "artifacts-dir"
+    $(cfg_get_setup_os_name)_before_install
+    $($(cfg_get_setup_os_name)_entryif)_before_install
+    hostos "osupgrade"
+    hostos "addrepos"
+    hostos "instpkgs"
+    hostos "osmetainfo"
+    return $?
+}
+#==========================================================#
+
+hostos_osupgrade() {
+    local ARGS="$@"
+    $($(cfg_get_setup_os_name)_entryif)_add_runline \
+    "$($($(cfg_get_setup_os_type)_pkgmgr)_osupgrade)"
+    return $?
+}
+
+hostos_osmetainfo() {
+    local ARGS="$@"
+    $($(cfg_get_setup_os_name)_entryif)_add_runline \
+    "$($($(cfg_get_setup_os_type)_pkgmgr)_osmetainfo)"
+    return $?
+}
+
+hostos_addrepos() {
+    local ARGS="$@"
+    local REPOS="$(cfg_get_base_repos) $(cfg_get_os_repos)"
+    if [ -n "${REPOS}" ]; then
+        for REPO in ${REPOS}; do
+            $($(cfg_get_setup_os_name)_entryif)_add_runline \
+            "$($($(cfg_get_setup_os_type)_pkgmgr)_addrepo ${REPO})"
+        done
+    fi
+    return $?
+}
+
+hostos_instpkgs() {
+    local ARGS="$@"
+    local PKGS="$(cfg_get_base_pkgs) $(cfg_get_os_pkgs)"
+    if [ -n "${PKGS}" ]; then
+        for PKG in ${PKGS}; do
+            $($(cfg_get_setup_os_name)_entryif)_add_runline \
+            "$($($(cfg_get_setup_os_type)_pkgmgr)_instpkg ${PKG})"
+        done
+    fi
+    return $?
+}

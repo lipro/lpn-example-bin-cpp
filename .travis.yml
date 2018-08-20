@@ -1,0 +1,182 @@
+# https://docs.travis-ci.com/user/getting-started/
+# https://docs.travis-ci.com/user/customizing-the-build/
+# https://docs.travis-ci.com/user/reference/osx/
+# https://docs.travis-ci.com/user/docker/
+# https://giorgos.sealabs.net/build-and-test-against-docker-images-in-travis.html
+# https://medium.com/my-name-is-midori/b841c05db18
+# --> https://caskroom.github.io/
+# https://www.code2bits.com/assets/cheatsheets/cheatsheet-homebrew.pdf
+# https://blog.abysm.org/2016/03/installing-developer-toolset-rhel-based-distributions/
+dist: trusty
+sudo: required
+services: docker
+language: generic
+before_install: ${TRAVIS_BUILD_DIR}/.travis/before_install.sh
+install: ${TRAVIS_BUILD_DIR}/.travis/install.sh
+script: ${TRAVIS_BUILD_DIR}/.travis/script.sh
+after_script:
+  - tree -a ${TRAVIS_BUILD_DIR}-sysroot
+  - ls -al ${TRAVIS_BUILD_DIR}-build/*.{gz,zip}
+addons:
+  apt:
+    packages:
+    - tree
+env:
+  global:
+    - TRAVIS_SETUP_DIR=${HOME}/setup
+    - TRAVIS_PROVISION_DIR=${TRAVIS_BUILD_DIR}/.provision
+    - TRAVIS_BASE_REPOS=''
+    - TRAVIS_BASE_PKGS=''
+    - TRAVIS_BUILD_TOOL=cmake3
+    - TRAVIS_BUILD_ACTIONS='tool-version configure srcpkg build test install binpkg'
+matrix:
+  exclude:
+    - language: generic
+  include:
+    - os: osx
+      osx_image: xcode9.4
+      name: "x86_64: OS X 10.13 (Xcode 9.4)"
+      env:
+      - OS_ARCH=x86_64
+      - OS_TYPE=macos
+      - OS_VERSION=10.13
+      - OS_REPOS='tap:caskroom/cask'
+      - OS_PKGS='cmake'
+    - os: linux
+      name: "amd64: Ubuntu 18.04 LTS (Bionic Beaver)"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=ubuntu
+      - OS_VERSION=bionic
+      - OS_PKGS='build-essential cmake'
+    - os: linux
+      name: "amd64: Ubuntu 16.04 LTS (Xenial Xerus)"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=ubuntu
+      - OS_VERSION=xenial
+#     - OS_REPOS='ppa:rexut/recoil'
+      - OS_PKGS='build-essential cmake'
+    - os: linux
+      name: "amd64: Ubuntu 14.04 LTS (Trusty Tahr)"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=ubuntu
+      - OS_VERSION=trusty
+#     - OS_REPOS='ppa:rexut/recoil'
+      - OS_PKGS='build-essential cmake3'
+    - os: linux
+      name: "amd64: Debian 9 (Stretch)"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=debian
+      - OS_VERSION=stretch
+      - OS_REPOS='deb:updates deb:backports'
+      - OS_PKGS='build-essential cmake'
+    - os: linux
+      name: "amd64: Debian 8 (Jessie)"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=debian
+      - OS_VERSION=jessie
+      - OS_REPOS='deb:updates deb:backports'
+      - OS_PKGS='build-essential cmake'
+    - os: linux
+      name: "amd64: Scientific Linux 7 (Nitrogen)"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=sl
+      - OS_VERSION=7
+      - OS_REPOS='ycr:repos ycr:softwarecollections ycr:epel'
+      - OS_PKGS='grp:development-tools devtoolset-7 cmake3'
+    - os: linux
+      name: "amd64: Scientific Linux 6 (Carbon)"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=sl
+      - OS_VERSION=6
+      - OS_REPOS='sl6-ext-ycr:softwarecollections/2.0-1 ycr:epel'
+      - OS_PKGS='grp:development-tools devtoolset-7 cmake3'
+    - os: linux
+      name: "amd64: CentOS 7"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=centos
+      - OS_VERSION=7
+      - OS_REPOS='centos-sclo-rh epel'
+      - OS_PKGS='grp:development-tools devtoolset-7 cmake3'
+    - os: linux
+      name: "amd64: CentOS 6"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=centos
+      - OS_VERSION=6
+      - OS_REPOS='centos-sclo-rh epel'
+      - OS_PKGS='grp:development-tools devtoolset-7 cmake3'
+    - os: linux
+      name: "amd64: Fedora 28"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=fedora
+      - OS_VERSION=28
+      - OS_PKGS='grp:development-tools grp:c-development-tools-and-libraries cmake'
+    - os: linux
+      name: "amd64: Fedora 27"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=fedora
+      - OS_VERSION=27
+      - OS_PKGS='grp:development-tools grp:c-development-tools-and-libraries cmake'
+    - os: linux
+      name: "amd64: openSUSE Leap"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=opensuse
+      - OS_VERSION=leap
+      - OS_PKGS='pat:devel_basis pat:devel_C_C++ gcc-c++ cmake'
+    - os: linux
+      name: "amd64: openSUSE Tumbleweed"
+      env:
+      - OS_ARCH=amd64
+      - OS_TYPE=opensuse
+      - OS_VERSION=tumbleweed
+      - OS_PKGS='pat:devel_basis pat:devel_C_C++ gcc-c++ cmake'
+    - os: linux
+      name: "i386: Ubuntu 18.04 LTS (Bionic Beaver)"
+      env:
+      - OS_ARCH=i386
+      - OS_TYPE=ubuntu
+      - OS_VERSION=bionic
+      - OS_PKGS='build-essential cmake'
+    - os: linux
+      name: "i386: Ubuntu 16.04 LTS (Xenial Xerus)"
+      env:
+      - OS_ARCH=i386
+      - OS_TYPE=ubuntu
+      - OS_VERSION=xenial
+#     - OS_REPOS='ppa:rexut/recoil'
+      - OS_PKGS='build-essential cmake'
+    - os: linux
+      name: "i386: Ubuntu 14.04 LTS (Trusty Tahr)"
+      env:
+      - OS_ARCH=i386
+      - OS_TYPE=ubuntu
+      - OS_VERSION=trusty
+#     - OS_REPOS='ppa:rexut/recoil'
+      - OS_PKGS='build-essential cmake3'
+    - os: linux
+      name: "i386: Debian 9 (Stretch)"
+      env:
+      - OS_ARCH=i386
+      - OS_TYPE=debian
+      - OS_VERSION=stretch
+      - OS_REPOS='deb:updates deb:backports'
+      - OS_PKGS='build-essential cmake'
+    - os: linux
+      name: "i386: Debian 8 (Jessie)"
+      env:
+      - OS_ARCH=i386
+      - OS_TYPE=debian
+      - OS_VERSION=jessie
+      - OS_REPOS='deb:updates deb:backports'
+      - OS_PKGS='build-essential cmake'

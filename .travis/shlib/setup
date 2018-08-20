@@ -1,0 +1,136 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+
+#==========================================================#
+
+setup() {
+    local OP="$1"; [ -n "${OP}" ] && shift
+    local ARGS="$@"
+    case "${OP}" in
+      "create"|"provide"|"convert"|"provision")
+        setup_${OP} ${ARGS}
+        ;;
+      *)
+        echo "ERROR: invalid or unknown setup operation: ${OP}"
+        false
+        ;;
+    esac
+    return $?
+}
+
+#==========================================================#
+
+setup_create() {
+    local FILE="$1"; [ -n "${FILE}" ] && shift
+    local CONT="$@"
+    local TARGET="$(dirname ${FILE})"
+    mkdir -pv "${TARGET}"
+    touch "${FILE}"
+    [ -n "${CONT}" ] && echo "${CONT}" > "${FILE}" || true
+    return $?
+}
+
+setup_provide() {
+    local FOLDER="$1"; [ -n "${FOLDER}" ] && shift
+    local ARGS="$@"
+    local SOURCE="$(cfg_get_build_dir)"
+    local TARGET="$(cfg_get_setup_dir)/$(cfg_get_provision_reldir)"
+    if [ -d "${SOURCE}/${FOLDER}" -a \
+         -r "${SOURCE}/${FOLDER}" ]; then
+        mkdir -pv "${TARGET}"
+        cp -av "${SOURCE}/${FOLDER}" "${TARGET}"
+    fi
+    return $?
+}
+
+setup_convert() {
+    local OBJ="$1"; [ -n "${OBJ}" ] && shift
+    local RULE="$1"; [ -n "${RULE}" ] && shift
+    local SDIR="$1"; [ -n "${SDIR}" ] && shift
+    local TDIR="$1"; [ -n "${TDIR}" ] && shift
+    local ARGS="$@"
+    local SOURCE="$(cfg_get_build_dir)/${SDIR}/${OBJ}.in"
+    local TARGET="$(cfg_get_setup_dir)/${TDIR}/${OBJ}"
+    mkdir -pv "$(dirname ${TARGET})"
+    sed -e "${RULE}" "${SOURCE}" > "${TARGET}"
+    case "${OBJ}" in
+      *bin*)
+        chmod 0775 "${TARGET}"
+        ;;
+      *)
+        chmod 0664 "${TARGET}"
+        ;;
+    esac
+    return $?
+}
+
+setup_provision() {
+    local PROV="$1"; [ -n "${PROV}" ] && shift
+    local ARGS="$@"
+    case "${PROV}" in
+      "setup-file")
+        setup "create" "$(cfg_get_setup_file)"
+        ;;
+      "build-dir")
+        setup "create" "$(cfg_get_outer_build_dir)/.empty"
+        ;;
+      "sysroot-dir")
+        setup "create" "$(cfg_get_outer_sysroot_dir)/.empty"
+        ;;
+      "artifacts-dir")
+        setup "create" "$(cfg_get_outer_artifacts_dir)/.empty"
+        ;;
+      "root")
+        setup "provide" "$(cfg_get_provision_root_reldir)"
+        ;;
+      "os-root")
+        setup "provide" "$(cfg_get_provision_os_root_reldir)"
+        ;;
+      "cmd-usage")
+        setup "convert" "/usr/bin/usage" \
+                        "s|%IMAGE_NAME%|$(cfg_get_docker_image)|g" \
+                        "$(cfg_get_provision_templ_reldir)" \
+                        "$(cfg_get_provision_root_reldir)"
+        ;;
+      "profile-sclo")
+        # https://github.com/sclorg/devtoolset-container/
+        local SCL="$1"; [ -n "${SCL}" ] && shift
+        local ARGS="$@"
+        local PROFILE="/etc/profile.d/scl_${SCL}.sh"
+        setup "create" \
+              "$(cfg_get_setup_dir)/$(cfg_get_provision_root_reldir)/etc/profile.d/scl_${SCL}.sh" \
+              "source scl_source enable ${SCL}"
+        ;;
+      "pkg-setup")
+        local PKG="$1"; [ -n "${PKG}" ] && shift
+        local ARGS="$@"
+        local OS="$(cfg_get_setup_os_type)"
+        case "${OS}::${PKG}" in
+          centos::devtoolset-*|sl::devtoolset-*)
+            # https://www.softwarecollections.org/en/scls/rhscl/devtoolset-7/
+            setup "provision" "profile-sclo" "${PKG}"
+            ;;
+          *)
+            # nothing more to do (not yet)
+            ;;
+        esac
+        ;;
+      "pkgs-setup")
+        local PKGS="$(cfg_get_base_pkgs) \
+                    $(cfg_get_os_pkgs)"
+        if [ -n "${PKGS}" ]; then
+            for PKG in ${PKGS}; do
+                setup "provision" "pkg-setup" "${PKG}"
+            done
+        fi
+        ;;
+      *)
+        echo "ERROR: invalid or unknown provision: ${PROV}"
+        false
+        ;;
+    esac
+    return $?
+}

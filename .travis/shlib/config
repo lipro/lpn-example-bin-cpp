@@ -1,0 +1,324 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+
+#==========================================================#
+
+cfg_get_setup_os_name() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_OS_NAME}"
+    return $?
+}
+
+cfg_get_setup_osx_image() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_OSX_IMAGE}"
+    return $?
+}
+
+cfg_get_setup_os_type() {
+    local ARGS="$@"
+    echo -en "${OS_TYPE}"
+    return $?
+}
+
+cfg_get_setup_os_vers() {
+    local ARGS="$@"
+    echo -en "${OS_VERSION}"
+    return $?
+}
+
+cfg_get_setup_os_arch() {
+    local ARGS="$@"
+    echo -en "${OS_ARCH}"
+    return $?
+}
+
+cfg_get_setup_os_entrypoint_i386() {
+    local ARGS="$@"
+    echo -en "/usr/bin/container-entrypoint-i386"
+    return $?
+}
+
+cfg_get_setup_os_entrypoint_amd64() {
+    local ARGS="$@"
+    echo -en "/usr/bin/container-entrypoint-amd64"
+    return $?
+}
+
+cfg_get_setup_os_entrypoint_x86_64() {
+    local ARGS="$@"
+    cfg_get_setup_os_entrypoint_amd64
+    return $?
+}
+
+cfg_get_setup_os_entrypoint() {
+    local ARGS="$@"
+    echo -en "${OS_EP:-[\"$(cfg_get_setup_os_entrypoint_$(cfg_get_setup_os_arch))}\"]"
+    return $?
+}
+
+cfg_get_setup_os_cmd() {
+    local ARGS="$@"
+    echo -en "${OS_CMD:-[\"/usr/bin/usage\"]}"
+    return $?
+}
+
+cfg_get_os_repos() {
+    local ARGS="$@"
+    echo -en "${OS_REPOS}"
+    return $?
+}
+
+cfg_get_os_pkgs() {
+    local ARGS="$@"
+    echo -en "${OS_PKGS}"
+    return $?
+}
+
+#==========================================================#
+
+cfg_get_build_repo_slug() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_REPO_SLUG}"
+    return $?
+}
+
+cfg_get_build_dir() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_BUILD_DIR}"
+    return $?
+}
+
+cfg_get_build_number() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_BUILD_NUMBER}"
+    return $?
+}
+
+cfg_get_build_tool() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_BUILD_TOOL}"
+    return $?
+}
+
+cfg_get_build_actions() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_BUILD_ACTIONS}"
+    return $?
+}
+
+cfg_get_build_commit() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_COMMIT}"
+    return $?
+}
+
+#==========================================================#
+
+cfg_get_setup_dir() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_SETUP_DIR}"
+    return $?
+}
+
+cfg_get_setup_file() {
+    local ARGS="$@"
+    local HOSTOS="$(cfg_get_setup_os_name)"
+    case "${HOSTOS}" in
+      "linux")
+        echo -en "$(cfg_get_setup_dir)/Dockerfile"
+        ;;
+      "osx")
+        echo -en "$(cfg_get_setup_dir)/Setupfile"
+        ;;
+      *)
+        echo "ERROR: unsupported setup file for OS: ${HOSTOS}"
+        false
+        ;;
+    esac
+    return $?
+}
+
+#==========================================================#
+
+cfg_get_provision_dir() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_PROVISION_DIR}"
+    return $?
+}
+
+cfg_get_provision_reldir() {
+    local ARGS="$@"
+    echo -en "$(basename $(cfg_get_provision_dir))"
+    return $?
+}
+
+cfg_get_provision_templ_reldir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_provision_reldir)/templates"
+    return $?
+}
+
+cfg_get_provision_root_reldir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_provision_reldir)/root"
+    return $?
+}
+
+cfg_get_provision_os_reldir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_provision_reldir)/$(cfg_get_setup_os_type)/$(cfg_get_setup_os_vers)"
+    return $?
+}
+
+cfg_get_provision_os_templ_reldir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_provision_os_reldir)/templates"
+    return $?
+}
+
+cfg_get_provision_os_root_reldir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_provision_os_reldir)/root"
+    return $?
+}
+
+cfg_get_base_repos() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_BASE_REPOS}"
+    return $?
+}
+
+cfg_get_base_pkgs() {
+    local ARGS="$@"
+    echo -en "${TRAVIS_BASE_PKGS}"
+    return $?
+}
+
+#==========================================================#
+
+cfg_get_docker_base_image_name() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_setup_os_arch)/$(cfg_get_setup_os_type)"
+    return $?
+}
+
+cfg_get_docker_base_image_tag() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_setup_os_vers)"
+    return $?
+}
+
+cfg_get_docker_base_image() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_docker_base_image_name):$(cfg_get_docker_base_image_tag)"
+    return $?
+}
+
+cfg_get_docker_image_name() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_build_repo_slug)/$(cfg_get_setup_os_type)"
+    return $?
+}
+
+cfg_get_docker_image_tag() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_setup_os_vers)"
+    return $?
+}
+
+cfg_get_docker_image() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_docker_image_name):$(cfg_get_docker_image_tag)"
+    return $?
+}
+
+#==========================================================#
+
+cfg_get_dir() {
+    local KEY="$1"; [ -n "${KEY}" ] && shift
+    local KIND="$1"; [ -n "${KIND}" ] && shift
+    local ARGS="$@"
+    local HOSTOS="$(cfg_get_setup_os_name)"
+    case "${HOSTOS}-${KIND}-${KEY}" in
+      linux-inner-source)
+        echo -en "/repo"
+        ;;
+      linux-outer-source|osx-*-source)
+        echo -en "${TRAVIS_BUILD_DIR}"
+        ;;
+      linux-inner-build)
+        echo -en "/build"
+        ;;
+      linux-outer-build|osx-*-build)
+        echo -en "${TRAVIS_BUILD_DIR}-build"
+        ;;
+      linux-inner-sysroot)
+        echo -en "/sysroot"
+        ;;
+      linux-outer-sysroot|osx-*-sysroot)
+        echo -en "${TRAVIS_BUILD_DIR}-sysroot"
+        ;;
+      linux-inner-artifacts)
+        echo -en "/artifacts"
+        ;;
+      linux-outer-artifacts|osx-*-artifacts)
+        echo -en "${TRAVIS_BUILD_DIR}-artifacts"
+        ;;
+      *)
+        echo "ERROR: unsupported key of directory: '${HOSTOS}-${KIND}-${KEY}'"
+        false
+        ;;
+    esac
+    return $?
+}
+
+cfg_get_inner_source_dir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_dir 'source' 'inner')"
+    return $?
+}
+
+cfg_get_outer_source_dir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_dir 'source' 'outer')"
+    return $?
+}
+
+cfg_get_inner_build_dir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_dir 'build' 'inner')"
+    return $?
+}
+
+cfg_get_outer_build_dir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_dir 'build' 'outer')"
+    return $?
+}
+
+cfg_get_inner_sysroot_dir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_dir 'sysroot' 'inner')"
+    return $?
+}
+
+cfg_get_outer_sysroot_dir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_dir 'sysroot' 'outer')"
+    return $?
+}
+
+cfg_get_inner_artifacts_dir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_dir 'artifacts' 'inner')"
+    return $?
+}
+
+cfg_get_outer_artifacts_dir() {
+    local ARGS="$@"
+    echo -en "$(cfg_get_dir 'artifacts' 'outer')"
+    return $?
+}

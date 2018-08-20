@@ -1,0 +1,14 @@
+#!/bin/sh
+cat <<EOF
+This is the specific toolchain image '%IMAGE_NAME%'.
+
+Sample invocation:
+
+    docker run -ti --rm %IMAGE_NAME% /bin/bash
+
+System information:
+
+Kernel:		$(uname -a)
+$(lsb_release -a)
+
+EOF

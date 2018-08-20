@@ -1,0 +1,130 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+
+#==========================================================#
+
+do_apt_add_deb_repository() {
+    local URL="$1"; [ -n "${URL}" ] && shift
+    local DIST="$1"; [ -n "${DIST}" ] && shift
+    local COMPS="$1"; [ -n "${COMPS}" ] && shift
+    local PRIO="$1"; [ -n "${PRIO}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+apt-add-repository -y 'deb ${URL} ${DIST} ${COMPS}' && \
+echo 'Package: *' >> /etc/apt/preferences && \
+echo 'Pin: release a=${DIST}' >> /etc/apt/preferences && \
+echo 'Pin-Priority: ${PRIO}' >> /etc/apt/preferences
+:EOF
+    return $?
+}
+
+do_apt_add_ppa_repository() {
+    local PPA="ppa:$1"; [ -n "${PPA}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+apt-add-repository -y '${PPA}'
+:EOF
+    return $?
+}
+
+do_apt_get_dist_upgrade() {
+    local ARGS="$@"
+    cat << :EOF | tee -a ${SETUP_FILE}
+apt-get -qq -y update && \
+apt-get -qq -y dist-upgrade
+:EOF
+    return $?
+}
+
+do_apt_get_install() {
+    local DEB="$1"; [ -n "${DEB}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+apt-get -qq -y install '${DEB}'
+:EOF
+    return $?
+}
+
+do_dpkg_info() {
+    local ARGS="$@"
+    cat << :EOF
+lsb_release -a && echo "Architecture:	\$(dpkg --print-architecture)"
+:EOF
+    return $?
+}
+
+#==========================================================#
+
+dpkg_osupgrade() {
+    local ARGS="$@"
+    cat << :EOF
+$(do_apt_get_dist_upgrade) && \
+$(do_apt_get_install "lsb-core") && \
+$(do_apt_get_install "lsb-release") && \
+$(do_apt_get_install "software-properties-common")
+:EOF
+    return $?
+}
+
+dpkg_osmetainfo() {
+    local ARGS="$@"
+    cat << :EOF
+$(do_dpkg_info)
+:EOF
+    return $?
+}
+
+dpkg_addrepo() {
+    local REPO="$1"; [ -n "${REPO}" ] && shift
+    local ARGS="$@"
+    local OS="$(cfg_get_setup_os_type)"
+    local OV="$(cfg_get_setup_os_vers)"
+    case "${REPO}" in
+      deb:*)
+        # Debian Repository
+        APTD="${OV}-${REPO#deb:}"
+        if [ "${OS}" = "debian" ]; then
+          APTU="http://deb.${OS}.org/${OS}"
+          APTC="main contrib non-free"
+        fi
+        if [ "${OS}" = "ubuntu" ]; then
+          APTU="http://archive.${OS}.com/${OS}"
+          APTC="main restricted universe multiverse"
+        fi
+        APTP=500
+        if [ "${REPO#deb:}" = "updates" ]; then
+          APTP=990
+        fi
+        if [ "${REPO#deb:}" = "backports" ]; then
+          APTP=550
+        fi
+        cat << :EOF
+$(do_apt_add_deb_repository "${APTU}" "${APTD}" "${APTC}" "${APTP}") && \
+$(do_apt_get_dist_upgrade)
+:EOF
+        ;;
+      ppa:*)
+        # Ubuntu Private Package Archive
+        cat << :EOF
+$(do_apt_add_ppa_repository "${REPO#ppa:}") && \
+$(do_apt_get_dist_upgrade)
+:EOF
+        ;;
+      *)
+        # nothing more to do (not yet)
+        ;;
+    esac
+    return $?
+}
+
+dpkg_instpkg() {
+    local PKG="$1"; [ -n "${PKG}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+$(do_apt_get_install "${PKG}")
+:EOF
+    return $?
+}

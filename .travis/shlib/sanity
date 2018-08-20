@@ -1,0 +1,86 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+
+#==========================================================#
+
+#
+# error handling
+#
+
+do_error_exit() {
+    echo { \"status\": ${RETVAL}, \
+           \"source\": ${BASH_SOURCE[1]}, \
+           \"function\": ${FUNCNAME[1]}, \
+           \"line\": ${BASH_LINENO[0]}, \
+           \"command\": \"${BASH_COMMAND[0]}\" }
+    exit ${RETVAL}
+}
+
+trap 'RETVAL=$?; set +x; echo "ERROR"; do_error_exit ' ERR
+trap 'RETVAL=$?; set +x; echo "received signal to stop"; do_error_exit ' SIGQUIT SIGTERM SIGINT
+
+# export trap to functions
+set -eE
+
+#==========================================================#
+
+#
+# helper functions
+#
+
+chk_env_has() {
+    local KEY="$1"
+    if [ -z "${!KEY+x}" ]; then
+        echo "ERROR: environment has no variable: '${KEY}'"
+        false
+    fi
+    return $?
+}
+
+chk_var_not_empty() {
+    local KEY="$1"
+    if [ -z "${!KEY-x}" ]; then
+        echo "ERROR: environment variable is empty: '${KEY}'"
+        false
+    fi
+    return $?
+}
+
+chk_env_has_not_empty_key() {
+    local KEY="$1"
+    if ! chk_env_has "${KEY}" || ! chk_var_not_empty "${KEY}"; then
+        echo "ERROR: no environment variable or is empty: '${KEY}'"
+        false
+    fi
+    return $?
+}
+
+#==========================================================#
+
+# Travis-CI standard variables
+chk_env_has_not_empty_key "TRAVIS_OS_NAME"
+[ "${TRAVIS_OS_NAME}" == "osx" ] \
+&& chk_env_has_not_empty_key "TRAVIS_OSX_IMAGE" \
+|| chk_env_has "TRAVIS_OSX_IMAGE"
+chk_env_has_not_empty_key "TRAVIS_REPO_SLUG"
+chk_env_has_not_empty_key "TRAVIS_BUILD_DIR"
+chk_env_has_not_empty_key "TRAVIS_BUILD_NUMBER"
+chk_env_has_not_empty_key "TRAVIS_COMMIT"
+
+# Li-Pro.Net extended variables
+chk_env_has "TRAVIS_BASE_REPOS"
+chk_env_has "TRAVIS_BASE_PKGS"
+chk_env_has_not_empty_key "TRAVIS_SETUP_DIR"
+chk_env_has_not_empty_key "TRAVIS_PROVISION_DIR"
+chk_env_has_not_empty_key "TRAVIS_BUILD_TOOL"
+chk_env_has_not_empty_key "TRAVIS_BUILD_ACTIONS"
+chk_env_has_not_empty_key "OS_ARCH"
+chk_env_has_not_empty_key "OS_TYPE"
+chk_env_has_not_empty_key "OS_VERSION"
+
+# Li-Pro.Net extended variables (optional)
+# OS_EP
+# OS_CMD
+# OS_REPOS
+# OS_PKGS

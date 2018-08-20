@@ -1,0 +1,74 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+source "$(dirname $0)/shlib/hostos"
+source "$(dirname $0)/shlib/cmake"
+
+#==========================================================#
+
+cmake3_name() {
+    local ARGS="$@"
+    echo -en "CMake 3.x"
+    return $?
+}
+
+#==========================================================#
+
+cmake3_validate() {
+    local ARGS="$@"
+    local BUILD_TOOL="$(cfg_get_build_tool)"
+    if [ "${BUILD_TOOL:0:6}" != "cmake3" ]; then
+        echo "ERROR: invalid CMake 3.x build tool declaration: ${BUILD_TOOL}"
+        false
+    fi
+    return $?
+}
+
+cmake3_action() {
+    local ARGS="$@"
+    local ACTS="$(cfg_get_build_actions)"
+    local BIN="$(cmake3_get_executable)"
+    cmake_action "${BIN}" "${ACTS}"
+    return $?
+}
+
+cmake3_run() {
+    local ACT="$1"; [ -n "${ACT}" ] && shift
+    local ARGS="$@"
+    local BIN="$(cmake3_get_executable)"
+    cmake_run "${BIN}" "${ACT}"
+    return $?
+}
+
+#==========================================================#
+
+cmake3_get_executable_name() {
+    local ARGS="$@"
+    local OSTYPE="$(cfg_get_setup_os_type)"
+    case "${OSTYPE}" in
+      "debian"|"ubuntu"|"fedora"|"opensuse"|"macos")
+        echo -en "cmake"
+        ;;
+      "centos"|"sl")
+        echo -en "cmake3"
+        ;;
+      *)
+        echo "ERROR: unable to set CMake 3.x executable for OS: ${OSTYPE}"
+        false
+        ;;
+    esac
+    return $?
+}
+
+cmake3_get_executable() {
+    local ARGS="$@"
+    local NAME="$(cmake3_get_executable_name)"
+    # TODO: Evaluate given executable name as real binary
+    #       and return this binary name with absolut path.
+    # NOTE: The first try to do this with 'runner wich ...'
+    #       goes completely wrong for unknown reason!
+    echo -en "${NAME}"
+    return $?
+}

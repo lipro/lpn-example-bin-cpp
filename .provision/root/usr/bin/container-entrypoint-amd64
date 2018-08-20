@@ -1,0 +1,7 @@
+#!/bin/bash
+
+unset BASH_ENV PROMPT_COMMAND ENV
+
+set -eu
+cmd="$1"; shift
+exec setarch x86_64 $cmd "$@"

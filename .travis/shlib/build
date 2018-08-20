@@ -1,0 +1,43 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+source "$(dirname $0)/shlib/$(cfg_get_build_tool)"
+
+#==========================================================#
+
+build() {
+    local OP="$1"; [ -n "${OP}" ] && shift
+    local ARGS="$@"
+    case "${OP}" in
+      "validate"|"action"|"run")
+        build_${OP} ${ARGS}
+        ;;
+      *)
+        echo "ERROR: invalid or unknown $($(cfg_get_build_tool)_name) build tool operation: ${OP}"
+        false
+        ;;
+    esac
+    return $?
+}
+
+#==========================================================#
+
+build_validate() {
+    local ARGS="$@"
+    $(cfg_get_build_tool)_validate
+    return $?
+}
+
+build_action() {
+    local ARGS="$@"
+    $(cfg_get_build_tool)_action
+    return $?
+}
+
+build_run() {
+    local ARGS="$@"
+    $(cfg_get_build_tool)_run "${ARGS}"
+    return $?
+}

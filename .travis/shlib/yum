@@ -1,0 +1,178 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+
+#==========================================================#
+
+do_yum_add_rpm_repository() {
+    local REPO="$1"; [ -n "${REPO}" ] && shift
+    local ARGS="$@"
+    local -a RPMS=()
+    case "${REPO}" in
+      # Extra Packages for Enterprise Linux (EPEL)
+      "epel") RPMS=( "${REPO}-release" ) ;;
+      # Software Collection Organization (SCLO)
+      # --> http://ftp.scientificlinux.org/linux/scientific/7/x86_64/release-notes/#_packages_from_sl_removed_from_sl
+      # --> http://ftp.scientificlinux.org/linux/scientific/7/x86_64/release-notes/#_sl_7_external_repos
+      # --> http://ftp.scientificlinux.org/linux/scientific/6.10/x86_64/os/sl-release-notes-6.10.html
+      #     --> "External Repositories for yum"
+      "softwarecollections") RPMS=( "yum-conf-repos" "yum-conf-softwarecollections" ) ;;
+      # CentOS Software Collections SIG (SCLo)
+      # --> https://www.softwarecollections.org/en/scls/
+      # --> https://wiki.centos.org/SpecialInterestGroup/SCLo
+      "centos-sclo-rh") RPMS=( "centos-release-scl-rh" );;
+      *) echo "ERROR: unknown REPO: ${REPO}"; false ;;
+    esac
+    for i in ${!RPMS[@]}; do
+        [ $((${#RPMS[@]}-1)) -gt ${i} ] && CC=' && \' || CC=''
+        cat << :EOF
+yum -q -y install '${RPMS[${i}]}'${CC}
+:EOF
+    done
+    return $?
+}
+
+do_yum_upgrade() {
+    local ARGS="$@"
+    cat << :EOF
+yum -q -y upgrade
+:EOF
+    return $?
+}
+
+do_yum_install() {
+    local RPM="$1"; [ -n "${RPM}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+yum -q -y install '${RPM}'
+:EOF
+    return $?
+}
+
+do_yum_enarepo() {
+    local REPO="$1"; [ -n "${REPO}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+yum-config-manager --enable '${REPO}'
+:EOF
+    return $?
+}
+
+do_yum_groupinfo() {
+    local GRP="$1"; [ -n "${GRP}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+yum -y groupinfo '${GRP}'
+:EOF
+    return $?
+}
+
+do_yum_groupinstall() {
+    local GRP="$1"; [ -n "${GRP}" ] && shift
+    local ARGS="$@"
+    cat << :EOF
+yum -q -y groupinstall '${GRP}'
+:EOF
+    return $?
+}
+
+do_yum_info() {
+    local ARGS="$@"
+    cat << :EOF
+lsb_release -a && echo "Architecture:	\$(echo not-yet)" && \
+yum -y repolist && \
+yum -y grouplist
+:EOF
+    return $?
+}
+
+#==========================================================#
+
+yum_osupgrade() {
+    local ARGS="$@"
+    cat << :EOF
+$(do_yum_upgrade) && \
+$(do_yum_install "redhat-lsb-core") && \
+$(do_yum_install "yum-utils")
+:EOF
+    return $?
+}
+
+yum_osmetainfo() {
+    local ARGS="$@"
+    cat << :EOF
+$(do_yum_info)
+:EOF
+    return $?
+}
+
+yum_addrepo() {
+    local REPO="$1"; [ -n "${REPO}" ] && shift
+    local ARGS="$@"
+    local TEMP=""
+    local VERS=""
+    local RPM=""
+    case "${REPO}" in
+      "epel")
+        # Extra Packages for Enterprise Linux (EPEL)
+        RPM="${REPO}-release"
+        ;;
+      "centos-sclo-rh")
+        # CentOS Software Collections SIG (SCLo)
+        # --> https://www.softwarecollections.org/en/scls/
+        # --> https://wiki.centos.org/AdditionalResources/Repositories
+        # --> https://wiki.centos.org/SpecialInterestGroup/SCLo
+        RPM="centos-release-scl"
+        ;;
+      ycr:*)
+        # External Repositories provided as 'yum-conf-<repo>' package
+        REPO="${REPO#ycr:}"
+        RPM="yum-conf-${REPO}"
+        ;;
+      sl6-ext-ycr:*)
+        # Scientific Linux 6 External Products provided as 'ycr' package
+        # --> http://ftp.scientificlinux.org/linux/scientific/6/external_products/
+        # --> https://blog.abysm.org/2016/03/installing-developer-toolset-rhel-based-distributions/
+        TEMP="${REPO#sl6-ext-ycr:}"
+        VERS="${TEMP##*/}"
+        REPO="${TEMP%/*}"
+        RPM="http://ftp.scientificlinux.org"
+        RPM="${RPM}/linux/scientific/6/external_products"
+        RPM="${RPM}/${REPO}/yum-conf-${REPO}-${VERS}.el6.noarch.rpm"
+        ;;
+      *)
+        # nothing more to do (not yet)
+        ;;
+    esac
+    if [ -n "${RPM}" -a -n "${REPO}" ]; then
+        cat << :EOF
+$(do_yum_install "${RPM}") && \
+$(do_yum_enarepo "${REPO}") && \
+$(do_yum_upgrade)
+:EOF
+    fi
+    return $?
+}
+
+yum_instpkg() {
+    local PKG="$1"; [ -n "${PKG}" ] && shift
+    local ARGS="$@"
+    case "${PKG}" in
+      grp:*)
+        GRP="${PKG#grp:}"
+        GRP="${GRP//-/ }"
+        cat << :EOF
+$(do_yum_groupinfo "${GRP}") && \
+$(do_yum_groupinstall "${GRP}")
+:EOF
+        ;;
+      *)
+        cat << :EOF
+$(do_yum_install "${PKG}")
+:EOF
+        ;;
+    esac
+    return $?
+}

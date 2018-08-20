@@ -1,0 +1,44 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+source "$(dirname $0)/shlib/setup"
+source "$(dirname $0)/shlib/docker"
+
+#==========================================================#
+
+linux_name() {
+    local ARGS="$@"
+    echo -en "Linux"
+    return $?
+}
+
+linux_entryif() {
+    local ARGS="$@"
+    echo -en "docker"
+    return $?
+}
+
+#==========================================================#
+
+linux_validate() {
+    local ARGS="$@"
+    local HOSTOS="$(cfg_get_setup_os_name)"
+    if [ "${HOSTOS:0:5}" != "linux" ]; then
+        echo "ERROR: invalid $(linux_name) host OS declaration: ${HOSTOS}"
+        false
+    fi
+    return $?
+}
+
+linux_before_install() {
+    local ARGS="$@"
+    setup "provision" "root"
+    setup "provision" "os-root"
+    setup "provision" "cmd-usage"
+    setup "provision" "pkgs-setup"
+    tree -a $(cfg_get_setup_dir)
+    tree -a $(cfg_get_build_dir)/$(cfg_get_provision_reldir)
+    return $?
+}

@@ -1,0 +1,63 @@
+#==========================================================#
+
+source "$(dirname $0)/shlib/global"
+source "$(dirname $0)/shlib/sanity"
+source "$(dirname $0)/shlib/config"
+
+#==========================================================#
+
+cli_before_install() {
+    local ARGS="$@"
+    cli_add_line "$(cli_file_shebang)"
+    cli_add_line "$(cli_file_env)"
+    return $?
+}
+
+cli_build() {
+    local ARGS="$@"
+    local SETUP="$(cfg_get_setup_file)"
+    chmod +x "${SETUP}"
+    exec "${SETUP}"
+    return $?
+}
+
+cli_run() {
+    local CMD="$1"; [ -n "${CMD}" ] && shift
+    local ARGS="$@"
+    ${CMD} ${ARGS}
+    return $?
+}
+
+#==========================================================#
+
+cli_add_line() {
+    local ARGS="$@"
+    local SETUP="$(cfg_get_setup_file)"
+    echo "${ARGS}" | tee -a "${SETUP}"
+    return $?
+}
+
+cli_add_runline() {
+    local ARGS="$@"
+    cli_add_line "${ARGS}"
+    return $?
+}
+
+#==========================================================#
+
+cli_file_shebang() {
+    local ARGS="$@"
+    cat << :EOF
+#!/usr/bin/env bash
+:EOF
+    return $?
+}
+
+cli_file_env() {
+    local ARGS="$@"
+    cat << :EOF
+export BUILD_NUMBER=$(cfg_get_build_number)
+export COMMIT_SHA=$(cfg_get_build_commit)
+:EOF
+    return $?
+}
