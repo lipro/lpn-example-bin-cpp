@@ -30,6 +30,13 @@ if (EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
 			set (CPACK_SYSTEM_NAME lin32)
 		endif ()
 	endif ()
+	if (${CMAKE_SYSTEM_NAME} MATCHES Darwin)
+		if (${CMAKE_SYSTEM_PROCESSOR} MATCHES x86_64)
+			set (CPACK_SYSTEM_NAME osx64)
+		else ()
+			set (CPACK_SYSTEM_NAME osx32)
+		endif ()
+	endif ()
 	set (CPACK_SET_DESTDIR true)
 
 	### source generator
