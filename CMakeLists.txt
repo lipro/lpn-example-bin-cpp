@@ -87,21 +87,64 @@ include (GNUSourceAvailable)
 # see: https://cmake.org/cmake/help/v3.0/variable/CMAKE_LANG_COMPILER_ID.html
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 	# all and extra pedantic warnings and all warnings as errors
-        # see: https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html
-        # see: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+	# see: https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html
+	# see: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 	add_compile_options (-Wall -Wextra -pedantic -Werror)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+	# https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B#Internal_version_numbering
+	if (MSVC_VERSION GREATER_EQUAL 1910 AND MSVC_VERSION LESS 1920)
+		# Visual Studio 2017 version 15.x, toolset 14.1x
+		set (MSVC_IS_2017 ON)
+		set (MSVC_IS_2015 OFF)
+		set (MSVC_IS_2013 OFF)
+	elseif (MSVC_VERSION EQUAL 1900)
+		# Visual Studio 2015 version 14.0, toolset 14.0
+		set (MSVC_IS_2017 OFF)
+		set (MSVC_IS_2015 ON)
+		set (MSVC_IS_2013 OFF)
+	elseif (MSVC_VERSION EQUAL 1800)
+		# Visual Studio 2013 version 12.0, toolset 12.0
+		set (MSVC_IS_2017 OFF)
+		set (MSVC_IS_2015 OFF)
+		set (MSVC_IS_2013 ON)
+	else ()
+		message (FATAL_ERROR "This build script only supports "
+			 "Visual Studio 2013, Visual Studio 2015, or "
+			 "Visual Studio 2017. "
+			 "MSVC version '${MSVC_VERSION}' is not supported.")
+	endif ()
 	# warning level 4 and more and all warnings as errors
-        # see: https://docs.microsoft.com/cpp/build/reference/compiler-options-listed-alphabetically
-        # see: https://docs.microsoft.com/cpp/build/reference/compiler-option-warning-level
-	add_compile_options (/Wall /WX)
-	# disable disturbing and only informative warnings
-	# see: https://stackoverflow.com/questions/15175178
-	# see: https://stackoverflow.com/questions/45579176
+	# see: https://docs.microsoft.com/cpp/build/reference/compiler-options-listed-alphabetically
+	# see: https://docs.microsoft.com/cpp/build/reference/compiler-option-warning-level
 	# see: https://docs.microsoft.com/cpp/preprocessor/compiler-warnings-that-are-off-by-default
-	add_compile_options (/wd4514) # Unreferenced inline function has been removed.
-	add_compile_options (/wd4710) # Function not inlined.
-	add_compile_options (/wd4711) # Function selected for inline expansion.
+	add_compile_options (/Wall /WX)
+	# This is only supported/neded by MSVC 2017
+	if (MSVC_IS_2017)
+		# https://blogs.msdn.microsoft.com/vcblog/2017/12/13/broken-warnings-theory/
+		# Enable dealing with "external" headers. Treat all headers
+		# included via <> as external headers. Switch the default
+		# warning level 4 for external headers.
+		add_compile_options (/experimental:external)
+		add_compile_options (/external:anglebrackets)
+		add_compile_options (/external:W0)
+		# disable disturbing and only informative warnings
+		add_compile_options (/wd4710) # Function not inlined.
+	endif ()
+	# This is only neded by MSVC 2015
+	if (MSVC_IS_2015)
+		# disable disturbing and only informative warnings
+		add_compile_options (/wd4514) # Unreferenced inline function has been removed.
+		add_compile_options (/wd4710) # Function not inlined.
+		add_compile_options (/wd4711) # Function selected for inline expansion.
+	endif ()
+	# This is only neded by MSVC 2013
+	if (MSVC_IS_2013)
+		# disable disturbing and only informative warnings
+		add_compile_options (/wd4350) # Behavior change.
+		add_compile_options (/wd4514) # Unreferenced inline function has been removed.
+		add_compile_options (/wd4710) # Function not inlined.
+		add_compile_options (/wd4820) # Padding added after data member.
+	endif ()
 endif ()
 
 ####################### INSTALL / EXPORT ########################

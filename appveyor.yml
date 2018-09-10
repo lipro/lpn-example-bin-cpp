@@ -1,0 +1,91 @@
+version: '{branch}-{build}'
+# https://www.appveyor.com/docs/build-environment/
+environment:
+  matrix:
+    - PlatformToolset: v141
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    - PlatformToolset: v140
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+    - PlatformToolset: v120
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
+    - PlatformToolset: cygwin
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    - PlatformToolset: msys2
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    - PlatformToolset: mingw-w64
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+platform:
+  - x86
+  - x64
+configuration:
+  - Release
+  - Debug
+# https://www.appveyor.com/docs/lang/cpp/
+install:
+  - if "%PlatformToolset%"=="v141" if "%platform%"=="x86" call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
+  - if "%PlatformToolset%"=="v141" if "%platform%"=="x64" call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" amd64
+  - if "%PlatformToolset%"=="v140" if "%platform%"=="x86" call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x86
+  - if "%PlatformToolset%"=="v140" if "%platform%"=="x64" call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+  - if "%PlatformToolset%"=="v120" if "%platform%"=="x86" call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" x86
+  - if "%PlatformToolset%"=="v120" if "%platform%"=="x64" call "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" amd64
+  - if "%PlatformToolset%"=="mingw-w64" if "%platform%"=="x86" set PATH=C:\mingw-w64\i686-6.3.0-posix-dwarf-rt_v5-rev1\mingw32\bin;%PATH:C:\Program Files\Git\usr\bin;=%
+  - if "%PlatformToolset%"=="mingw-w64" if "%platform%"=="x64" set PATH=C:\mingw-w64\x86_64-6.3.0-posix-seh-rt_v5-rev1\mingw64\bin;%PATH:C:\Program Files\Git\usr\bin;=%
+  - if "%PlatformToolset%"=="cygwin" if "%platform%"=="x86" set PATH=C:\cygwin\bin;%PATH:C:\Program Files\Git\usr\bin;=%
+  - if "%PlatformToolset%"=="cygwin" if "%platform%"=="x64" set PATH=C:\cygwin64\bin;%PATH:C:\Program Files\Git\usr\bin;=%
+  - if "%PlatformToolset%"=="msys2" if "%platform%"=="x86" set PATH=C:\msys64\mingw32\bin;C:\msys64\usr\bin;%PATH:C:\Program Files\Git\usr\bin;=%
+  - if "%PlatformToolset%"=="msys2" if "%platform%"=="x64" set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;%PATH:C:\Program Files\Git\usr\bin;=%
+build:
+  parallel: true
+  verbosity: normal
+before_build:
+  - ps: |
+      Write-Output "Configuration: $env:configuration"
+      Write-Output "Platform: $env:platform"
+      $generator = switch ($env:PlatformToolset)
+      {
+        "v141"      {"Visual Studio 15 2017"}
+        "v140"      {"Visual Studio 14 2015"}
+        "v120"      {"Visual Studio 12 2013"}
+        "cygwin"    {"Unix Makefiles"}
+        "msys2"     {"MSYS Makefiles"}
+        "mingw-w64" {"MinGW Makefiles"}
+      }
+      if (($generator -like "Visual Studio *") -and ($env:platform -eq "x64"))
+      {
+        $generator = "$generator Win64"
+      }
+      Write-Output "Generator: $generator"
+      $buildtarget = switch ($env:PlatformToolset)
+      {
+        "v141"      {"ALL_BUILD"}
+        "v140"      {"ALL_BUILD"}
+        "cygwin"    {"all"}
+        "msys2"     {"all"}
+        "mingw-w64" {"all"}
+      }
+      Get-Childitem env: | sort name | Format-Table -Wrap -AutoSize
+build_script:
+  - cd "%APPVEYOR_BUILD_FOLDER%"
+  - mkdir _build
+  - cd _build
+  - ps: |
+      cmake -G "$generator" -DCMAKE_BUILD_TYPE="$env:configuration" ..
+      dir
+      if ($LastExitCode -ne 0) {
+          throw "Exec: $ErrorMessage"
+      }
+      & cmake --build . --target $buildtarget --config $env:configuration
+      if ($LastExitCode -ne 0) {
+          throw "Exec: $ErrorMessage"
+      }
+test_script:
+  - cd "%APPVEYOR_BUILD_FOLDER%"/_build
+  - ctest -VV -C "%configuration%"
+on_finish:
+  - cd "%APPVEYOR_BUILD_FOLDER%"
+  - ps: |
+      $major = Select-String -Path .\CMakeLists.txt -Pattern "PROJECT_VERSION_MAJOR ([0-9]+)" | % { $_.Matches[0].Groups[1].Value }
+      $minor = Select-String -Path .\CMakeLists.txt -Pattern "PROJECT_VERSION_MINOR ([0-9]+)" | % { $_.Matches[0].Groups[1].Value }
+      $patch = Select-String -Path .\CMakeLists.txt -Pattern "PROJECT_VERSION_PATCH ([0-9]+)" | % { $_.Matches[0].Groups[1].Value }
+      $tweak = Select-String -Path .\CMakeLists.txt -Pattern "PROJECT_VERSION_TWEAK ([0-9]+)" | % { $_.Matches[0].Groups[1].Value }
+      Update-AppveyorBuild -Version "$major.$minor.$patch.$tweak-$env:APPVEYOR_BUILD_NUMBER"
