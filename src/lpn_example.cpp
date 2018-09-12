@@ -1,4 +1,4 @@
-#include<iostream>
+#include <iostream>
 #include "lpn_example_bin_cpp.h"
 
 int main(int argc, char *argv[]){
