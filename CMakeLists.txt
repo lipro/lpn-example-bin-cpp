@@ -83,11 +83,26 @@ include (CTestSetup)
 include (GNUSourceAvailable)
 
 # Setup global C build environment.
-add_compile_options ("-Wall")
-add_compile_options ("-Werror")
-add_compile_options ("-Wextra")
-add_compile_options ("-Wpedantic")
-add_compile_options ("-std=c++11")
+# see: https://arne-mertz.de/2018/07/cmake-properties-options/
+# see: https://cmake.org/cmake/help/v3.0/variable/CMAKE_LANG_COMPILER_ID.html
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	# all and extra pedantic warnings and all warnings as errors
+        # see: https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html
+        # see: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+	add_compile_options (-Wall -Wextra -pedantic -Werror)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+	# warning level 4 and more and all warnings as errors
+        # see: https://docs.microsoft.com/cpp/build/reference/compiler-options-listed-alphabetically
+        # see: https://docs.microsoft.com/cpp/build/reference/compiler-option-warning-level
+	add_compile_options (/Wall /WX)
+	# disable disturbing and only informative warnings
+	# see: https://stackoverflow.com/questions/15175178
+	# see: https://stackoverflow.com/questions/45579176
+	# see: https://docs.microsoft.com/cpp/preprocessor/compiler-warnings-that-are-off-by-default
+	add_compile_options (/wd4514) # Unreferenced inline function has been removed.
+	add_compile_options (/wd4710) # Function not inlined.
+	add_compile_options (/wd4711) # Function selected for inline expansion.
+endif ()
 
 ####################### INSTALL / EXPORT ########################
 

@@ -24,6 +24,17 @@ target_include_directories (
 	PRIVATE	"${CMAKE_CURRENT_BINARY_DIR}"
 )
 
+# setup target specific compiler features
+# see: https://crascit.com/2015/03/28/enabling-cxx11-in-cmake/
+# TODO: use target_compile_features() with 'cxx_std_11' as was
+#       introduced with CMake 3.8.
+set_target_properties (
+	lpn_example_cpp
+	PROPERTIES	CXX_STANDARD 11
+			CXX_STANDARD_REQUIRED YES
+			CXX_EXTENSIONS NO
+)
+
 # add the install targets
 install (
 	TARGETS		lpn_example_cpp
